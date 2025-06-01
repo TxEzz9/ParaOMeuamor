@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Você ❤️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            background-color: #0f172a;
+            color: white;
+        }
+        
+        .pixel-bg {
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .play-btn {
+            position: relative;
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 15px rgba(255, 105, 180, 0.7);
+            transition: all 0.3s;
+        }
+        
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 105, 180, 0.9);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+        
+        .heart {
+            position: absolute;
+            font-size: 24px;
+            animation: fall linear infinite;
+            opacity: 0.8;
+            z-index: 10;
+        }
+        
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+        
+        .message {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s ease-out;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        
+        .message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .restart-btn {
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .restart-btn:hover {
+            transform: scale(1.05);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        
+        .game-screen {
+            transition: all 0.5s ease-out;
+        }
+        
+        .game-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .love-screen {
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s ease-out;
+        }
+        
+        .love-screen.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="pixel-bg h-screen w-screen flex items-center justify-center">
+    <!-- Scanlines effect -->
+    <div class="scanlines"></div>
+    
+    <!-- Game Screen -->
+    <div class="game-screen flex flex-col items-center justify-center gap-12 p-8 text-center">
+        <h1 class="text-4xl md:text-6xl text-pink-500 mb-4">LOVE QUEST</h1>
+        <div class="relative">
+            <div class="absolute -inset-4 bg-pink-500 rounded-full blur opacity-75"></div>
+            <button id="playBtn" class="play-btn bg-pink-600 hover:bg-pink-700 text-white text-2xl md:text-4xl px-12 py-6 rounded-full relative">
+                PLAY
+            </button>
+        </div>
+        <p class="text-pink-300 text-sm md:text-base">Pressione PLAY para começar sua aventura</p>
+    </div>
+    
+    <!-- Love Screen -->
+    <div class="love-screen absolute inset-0 flex flex-col items-center justify-center gap-8 p-8 text-center">
+        <div id="messagesContainer" class="flex flex-col items-center justify-center gap-8 max-w-2xl">
+            <!-- Messages will be added here by JavaScript -->
+        </div>
+        <button id="restartBtn" class="restart-btn mt-12 bg-pink-600 hover:bg-pink-700 text-white text-xl px-8 py-4 rounded-full">
+            <i class="fas fa-redo mr-2"></i> RECOMEÇAR
+        </button>
+    </div>
+    
+    <!-- Audio elements -->
+    <audio id="menuMusic" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-668.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="loveMusic" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-piano-romance-1123.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="clickSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="messageSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-magic-sparkle-902.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const playBtn = document.getElementById('playBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const gameScreen = document.querySelector('.game-screen');
+            const loveScreen = document.querySelector('.love-screen');
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Audio elements
+            const menuMusic = document.getElementById('menuMusic');
+            const loveMusic = document.getElementById('loveMusic');
+            const clickSound = document.getElementById('clickSound');
+            const messageSound = document.getElementById('messageSound');
+            
+            // Messages
+            const messages = [
+                "Você é meu player 2 pra sempre ❤️",
+                "Se beleza fosse XP, você seria nível infinito.",
+                "Com você, a vida tem gráficos ultra realistas de felicidade.",
+                "Sua risada é meu som favorito.",
+                "Você é o power-up que eu sempre quis.",
+                "Nosso amor tem mais fases que Super Mario.",
+                "Você é o high score do meu coração.",
+                "Jogar na vida fácil seria sem você.",
+                "Você é o easter egg que eu nunca esperava encontrar.",
+                "Nosso amor é como Tetris - todas as peças se encaixam perfeitamente.",
+                "Você é o continue quando eu falho.",
+                "Se amor fosse um jogo, eu escolheria o multiplayer só com você."
+            ];
+            
+            // Start menu music
+            menuMusic.volume = 0.3;
+            menuMusic.play();
+            
+            // Play button hover effect
+            playBtn.addEventListener('mouseenter', function() {
+                clickSound.currentTime = 0;
+                clickSound.volume = 0.3;
+                clickSound.play();
+            });
+            
+            // Play button click
+            playBtn.addEventListener('click', function() {
+                clickSound.currentTime = 0;
+                clickSound.volume = 0.3;
+                clickSound.play();
+                
+                // Transition to love screen
+                setTimeout(() => {
+                    gameScreen.classList.add('hidden');
+                    loveScreen.classList.add('show');
+                    
+                    // Stop menu music and start love music
+                    menuMusic.pause();
+                    loveMusic.volume = 0.3;
+                    loveMusic.play();
+                    
+                    // Create falling hearts
+                    createHearts();
+                    
+                    // Show messages one by one
+                    showMessages();
+                }, 500);
+            });
+            
+            // Restart button hover effect
+            restartBtn.addEventListener('mouseenter', function() {
+                clickSound.currentTime = 0;
+                clickSound.volume = 0.3;
+                clickSound.play();
+            });
+            
+            // Restart button click
+            restartBtn.addEventListener('click', function() {
+                clickSound.currentTime = 0;
+                clickSound.volume = 0.3;
+                clickSound.play();
+                
+                // Transition back to game screen
+                loveScreen.classList.remove('show');
+                setTimeout(() => {
+                    gameScreen.classList.remove('hidden');
+                    
+                    // Stop love music and start menu music
+                    loveMusic.pause();
+                    menuMusic.currentTime = 0;
+                    menuMusic.play();
+                    
+                    // Clear messages
+                    messagesContainer.innerHTML = '';
+                }, 500);
+            });
+            
+            // Create falling hearts
+            function createHearts() {
+                const heartEmojis = ['❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍'];
+                
+                function createHeart() {
+                    const heart = document.createElement('div');
+                    heart.className = 'heart';
+                    heart.textContent = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+                    
+                    // Random position and animation duration
+                    const left = Math.random() * 100;
+                    const duration = 5 + Math.random() * 10;
+                    const delay = Math.random() * 5;
+                    const size = 16 + Math.random() * 32;
+                    
+                    heart.style.left = `${left}%`;
+                    heart.style.top = `-50px`;
+                    heart.style.fontSize = `${size}px`;
+                    heart.style.animationDuration = `${duration}s`;
+                    heart.style.animationDelay = `${delay}s`;
+                    
+                    document.body.appendChild(heart);
+                    
+                    // Remove heart after animation completes
+                    setTimeout(() => {
+                        heart.remove();
+                    }, duration * 1000);
+                }
+                
+                // Create initial hearts
+                for (let i = 0; i < 20; i++) {
+                    createHeart();
+                }
+                
+                // Keep creating hearts
+                setInterval(createHeart, 500);
+            }
+            
+            // Show messages one by one
+            function showMessages() {
+                let delay = 0;
+                
+                messages.forEach((message, index) => {
+                    setTimeout(() => {
+                        const messageElement = document.createElement('div');
+                        messageElement.className = 'message';
+                        messageElement.textContent = message;
+                        
+                        messagesContainer.appendChild(messageElement);
+                        
+                        // Play sound and show message
+                        setTimeout(() => {
+                            messageSound.currentTime = 0;
+                            messageSound.volume = 0.2;
+                            messageSound.play();
+                            messageElement.classList.add('show');
+                        }, 100);
+                        
+                    }, delay);
+                    
+                    delay += 2500; // 2.5 seconds between messages
+                });
+            }
+        });
+    </script>
+</body>
+</html>
